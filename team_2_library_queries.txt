@@ -1,0 +1,78 @@
+USE inst327_final_haider;
+
+CREATE OR REPLACE VIEW current_homes AS
+    SELECT 
+        building_description_id, primary_residence
+    FROM
+        building_description
+    WHERE
+        primary_residence = 'Y';
+
+
+CREATE OR REPLACE VIEW claims_by_location AS
+    SELECT 
+        concat('$',FORMAT(AVG(claim_amount), 2)) AS 'Average Claim Amount',
+        State_abbreviation AS 'State Abbreviation'
+    FROM
+        claims
+            INNER JOIN
+        location ON claims.location_id = location.location_id
+    WHERE
+        claim_amount > 20000
+    GROUP BY State_abbreviation
+    ORDER BY AVG(claim_amount) DESC;
+
+CREATE OR REPLACE VIEW bruce_wayne_claims AS
+    SELECT 
+        CONCAT(owner_first_name, ' ', owner_last_name) AS 'Owner',
+        CONCAT('$', FORMAT(AVG(claim_amount), 2)) AS 'Average Claim Value'
+    FROM
+        owner
+            JOIN
+        (SELECT 
+            *
+        FROM
+            building_owner
+        JOIN building_description USING (building_owner_id)
+        JOIN claims USING (building_description_id)) AS wayne_houses ON wayne_houses.building_owner_id = owner.owner_id
+    WHERE
+        owner_last_name = 'wayne'
+            AND owner_first_name = 'bruce'
+    GROUP BY owner.owner_id;
+
+CREATE OR REPLACE VIEW cost_per_building AS
+    SELECT 
+        building_description_id,
+        house_of_worship,
+        condominium,
+        small_business,
+        claim_amount,
+        policy_cost,
+        content_coverage,
+        buildings_coverage,
+        CONCAT('$',
+                FORMAT(SUM(buildings_coverage + content_coverage),
+                    2)) AS 'Total coverage'
+    FROM
+        building_description
+            JOIN
+        claims USING (building_description_id)
+            JOIN
+        policy USING (policy_id)
+    GROUP BY building_description_id;
+    
+CREATE OR REPLACE VIEW policy_data_after_july09 AS
+    SELECT 
+        policy_id,
+        policy_cost,
+        policy_start_date,
+        policy_termination_date,
+        DATEDIFF(policy_termination_date,
+                policy_start_date) AS 'Policy Length in months'
+    FROM
+        policy p
+            JOIN
+        time t ON p.time_id = t.time_id
+    WHERE
+        policy_start_date >= '20090701'
+    ORDER BY policy_id;
